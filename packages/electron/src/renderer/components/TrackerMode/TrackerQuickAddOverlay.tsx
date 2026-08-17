@@ -23,7 +23,12 @@ export const TrackerQuickAddOverlay: React.FC<TrackerQuickAddOverlayProps> = ({
   onClose,
 }) => {
   const [title, setTitle] = React.useState('');
-  const [priority, setPriority] = React.useState('medium');
+  // Preselect the type's declared priority default rather than a hardcoded
+  // 'medium', which is out of enum for a type that doesn't declare it.
+  const defaultPriority =
+    (tracker?.fields?.find((f) => f.name === (tracker?.roles?.priority ?? 'priority'))
+      ?.default as string) || 'medium';
+  const [priority, setPriority] = React.useState(defaultPriority);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
