@@ -93,3 +93,43 @@ export function issueKeyAvailabilityNote(
 export function issueKeyStatus(item: { issueKey?: string | null }): 'assigned' | 'unassigned' {
   return getAssignedIssueKey(item) ? 'assigned' : 'unassigned';
 }
+
+
+/**
+ * Reject a caller-supplied `workspacePath` on tools that route by the
+ * connection's ambient workspace.
+ *
+ * These tools declare no `workspacePath` and set no `additionalProperties:
+ * false`, and nothing validates arguments (the MCP SDK types them as an open
+ * record). So an argument that looks meaningful was silently dropped and the
+ * tool answered confidently about a DIFFERENT workspace. Sibling tools on the
+ * same endpoint -- tracker_set_issue_key_prefix, workspace_open,
+ * workspace_set_trust -- do honour the parameter, which is exactly why a caller
+ * learns it and passes it here.
+ *
+ * Rejecting is preferred over honouring: honouring opens cross-workspace access
+ * questions, while a loud refusal costs one guard and never returns a plausible
+ * wrong answer. Returns the error result to send back, or null when allowed.
+ */
+export function rejectForeignWorkspaceArg(
+  args: any,
+  workspacePath: string | undefined,
+  toolName: string,
+): McpToolResult | null {
+  const requested = args?.workspacePath;
+  if (typeof requested !== "string" || requested.length === 0) return null;
+  if (requested === workspacePath) return null;
+  return {
+    content: [
+      {
+        type: "text",
+        text:
+          `Error: ${toolName} routes by the connection's workspace ` +
+          `(${workspacePath ?? "none"}) and does not accept a workspacePath argument. ` +
+          `Requested '${requested}' would not have been honoured. ` +
+          `Connect to the MCP endpoint for that workspace instead.`,
+      },
+    ],
+    isError: true,
+  };
+}

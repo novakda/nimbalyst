@@ -90,6 +90,43 @@ describe('resolveImmediateToolDecision', () => {
     });
   });
 
+  describe('allow-all mode does not silently read credentials', () => {
+    // "Allow edits only" (allow-all) used to auto-approve Read/Glob/Grep/LS on
+    // ANY absolute path with no path check, so ~/.aws/credentials was readable
+    // without a prompt -- contradicting the documented "always blocked"
+    // guarantee, which only ever held on the Electron file-service path.
+    // Returning null here means "fall through to the normal prompt", not deny.
+    it.each([
+      ['/home/user/.aws/credentials'],
+      ['/home/user/.ssh/id_rsa'],
+      ['/Users/user/.gnupg/secring.gpg'],
+      ['/etc/shadow'],
+      ['/home/user/project/.env'],
+    ])('escalates Read of %s to a prompt instead of auto-approving', async (filePath) => {
+      const deps = createDeps({
+        trustChecker: vi.fn().mockReturnValue({ trusted: true, mode: 'allow-all' }),
+      });
+      const params = createParams({ toolName: 'Read', input: { file_path: filePath } });
+      expect(await resolveImmediateToolDecision(deps, params)).toBeNull();
+    });
+
+    it('still auto-approves an ordinary in-workspace file', async () => {
+      const deps = createDeps({
+        trustChecker: vi.fn().mockReturnValue({ trusted: true, mode: 'allow-all' }),
+      });
+      const params = createParams({ toolName: 'Read', input: { file_path: '/test/workspace/src/app.ts' } });
+      assertZodCompliantAllow(await resolveImmediateToolDecision(deps, params));
+    });
+
+    it('escalates when the sensitive dir arrives via LS path rather than file_path', async () => {
+      const deps = createDeps({
+        trustChecker: vi.fn().mockReturnValue({ trusted: true, mode: 'allow-all' }),
+      });
+      const params = createParams({ toolName: 'LS', input: { path: '/home/user/.ssh' } });
+      expect(await resolveImmediateToolDecision(deps, params)).toBeNull();
+    });
+  });
+
   describe('Zod schema compliance: deny always includes message', () => {
     it('untrusted workspace returns message', async () => {
       const deps = createDeps({ trustChecker: vi.fn().mockReturnValue({ trusted: false, mode: null }) });

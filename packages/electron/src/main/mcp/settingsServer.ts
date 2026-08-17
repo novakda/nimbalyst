@@ -236,6 +236,24 @@ export async function dispatchSettingsTool(
     isError: typeof payload === "object" && payload !== null && (payload as any).ok === false,
   });
 
+  /**
+   * Tool arguments are not schema-validated -- the MCP SDK types them as an open
+   * record -- and model callers routinely send stringified booleans. `!!"false"`
+   * is `true`, so coercing with `!!` performs the OPPOSITE of the requested
+   * action and still reports success. On workspace_set_trust that means granting
+   * trust that was being revoked. Refuse the ambiguous value instead.
+   */
+  const strictBool = (value: unknown): boolean | undefined => {
+    if (value === true || value === "true") return true;
+    if (value === false || value === "false") return false;
+    return undefined;
+  };
+
+  const badBool = (field: string, value: unknown) => ({
+    ok: false,
+    error: `${field} must be a boolean (true or false); received ${JSON.stringify(value)}.`,
+  });
+
   try {
     switch (toolName) {
       case "settings_get_overview":
@@ -266,13 +284,25 @@ export async function dispatchSettingsTool(
         return respond(await svc.setTheme(aiSessionId, { theme: args.theme }));
 
       case "appearance_set_completion_sound":
-        return respond(await svc.setCompletionSound(aiSessionId, { enabled: !!args.enabled }));
+        {
+        const enabled = strictBool(args.enabled);
+        if (enabled === undefined) return respond(badBool("enabled", args.enabled));
+        return respond(await svc.setCompletionSound(aiSessionId, { enabled }));
+      }
 
       case "appearance_set_spellcheck":
-        return respond(await svc.setSpellcheck(aiSessionId, { enabled: !!args.enabled }));
+        {
+        const enabled = strictBool(args.enabled);
+        if (enabled === undefined) return respond(badBool("enabled", args.enabled));
+        return respond(await svc.setSpellcheck(aiSessionId, { enabled }));
+      }
 
       case "analytics_set_enabled":
-        return respond(await svc.setAnalytics(aiSessionId, { enabled: !!args.enabled }));
+        {
+        const enabled = strictBool(args.enabled);
+        if (enabled === undefined) return respond(badBool("enabled", args.enabled));
+        return respond(await svc.setAnalytics(aiSessionId, { enabled }));
+      }
 
       case "ai_set_default_model":
         return respond(
@@ -285,30 +315,42 @@ export async function dispatchSettingsTool(
         );
 
       case "features_toggle":
+      {
+        const enabled = strictBool(args.enabled);
+        if (enabled === undefined) return respond(badBool("enabled", args.enabled));
         return respond(
           await svc.toggleFeature(aiSessionId, {
             bucket: args.bucket,
             tag: args.tag,
-            enabled: !!args.enabled,
+            enabled,
           }),
         );
+      }
 
       case "extension_set_enabled":
+      {
+        const enabled = strictBool(args.enabled);
+        if (enabled === undefined) return respond(badBool("enabled", args.enabled));
         return respond(
           await svc.setExtensionEnabled(aiSessionId, {
             extensionId: args.extensionId,
-            enabled: !!args.enabled,
+            enabled,
           }),
         );
+      }
 
       case "workspace_set_trust":
+      {
+        const trusted = strictBool(args.trusted);
+        if (trusted === undefined) return respond(badBool("trusted", args.trusted));
         return respond(
           await svc.setWorkspaceTrust(aiSessionId, {
             workspacePath: args.workspacePath,
-            trusted: !!args.trusted,
+            trusted,
             mode: args.mode,
           }),
         );
+      }
 
       case "tracker_set_issue_key_prefix":
         return respond(

@@ -6,6 +6,7 @@ import type {
 } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { resolveTrackerSchemaChangeGate } from '@nimbalyst/runtime/plugins/TrackerPlugin/models/trackerSchemaChangeClassifier';
 import { getCurrentIdentity } from '../../services/TrackerIdentityService';
+import { rejectForeignWorkspaceArg } from './trackerToolResult';
 import {
   deleteWorkspaceTrackerSchema,
   ensureWorkspaceTrackerSchemasLoaded,
@@ -144,6 +145,8 @@ export async function handleTrackerListTypes(
   args: any,
   workspacePath?: string,
 ): Promise<McpToolResult> {
+  const foreignWorkspace = rejectForeignWorkspaceArg(args, workspacePath, 'tracker_list_types');
+  if (foreignWorkspace) return foreignWorkspace;
   try {
     // Custom (.nimbalyst/trackers/*.yaml) types are loaded into the registry by
     // window/session events; the in-process MCP server can be queried before

@@ -45,6 +45,7 @@ import {
   getTrackerDisplayRef,
   issueKeyAvailabilityNote,
   issueKeyStatus,
+  rejectForeignWorkspaceArg,
   type BodyWriteFailure,
   type McpToolResult,
   UNPUBLISHED_ISSUE_KEY_MESSAGE,
@@ -996,6 +997,8 @@ export async function handleTrackerList(
   args: any,
   workspacePath: string | undefined
 ): Promise<McpToolResult> {
+  const foreignWorkspace = rejectForeignWorkspaceArg(args, workspacePath, 'tracker_list');
+  if (foreignWorkspace) return foreignWorkspace;
   try {
     const requestedLimit = Number(args.limit);
     const limit = requestedLimit < 0
@@ -1428,6 +1431,8 @@ export async function handleTrackerCreate(
   workspacePath: string | undefined,
   sessionId?: string | undefined
 ): Promise<McpToolResult> {
+  const foreignWorkspace = rejectForeignWorkspaceArg(args, workspacePath, 'tracker_create');
+  if (foreignWorkspace) return foreignWorkspace;
   try {
     if (!workspacePath) {
       return {

@@ -1,3 +1,5 @@
+import { extractToolTargetPath, isSensitiveToolPath } from '../../permissions/sensitivePaths';
+
 export type ToolDecision = { behavior: 'allow' | 'deny'; updatedInput?: any; message?: string };
 
 interface TrustStatus {
@@ -114,6 +116,14 @@ export async function resolveImmediateToolDecision(
     }
 
     if (trustStatus.mode === 'allow-all' && ALLOW_ALL_FILE_EDIT_TOOLS.includes(toolName)) {
+      const targetPath = extractToolTargetPath(input);
+      if (isSensitiveToolPath(targetPath)) {
+        deps.logSecurity('[canUseTool] Allow-all mode, sensitive path escalated to prompt:', {
+          toolName,
+          targetPath,
+        });
+        return null;
+      }
       deps.logSecurity('[canUseTool] Allow-all mode, auto-approving file tool:', { toolName });
       return { behavior: 'allow', updatedInput: input };
     }

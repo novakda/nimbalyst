@@ -13,6 +13,8 @@
  * ClaudeCodeProvider and OpenAICodexProvider.
  */
 
+import { extractToolTargetPath, isSensitiveToolPath } from './sensitivePaths';
+
 import {
   PermissionDecision,
   TrustChecker,
@@ -393,12 +395,18 @@ export class ToolPermissionService {
         return { decision: 'allow', scope: 'once' };
       }
 
-      // Allow-all mode: auto-approve file edit operations
+      // Allow-all mode: auto-approve file edit operations, except on paths that
+      // hold credentials -- those escalate to a prompt (see sensitivePaths.ts).
       if (trustStatus.mode === 'allow-all') {
         const fileEditTools = ['Edit', 'Write', 'MultiEdit', 'Read', 'Glob', 'Grep', 'LS', 'NotebookEdit'];
         if (fileEditTools.includes(toolName)) {
-          this.securityLogger('[ToolPermissionService] Allow-all mode, auto-approving file tool', { toolName });
-          return { decision: 'allow', scope: 'once' };
+          const targetPath = extractToolTargetPath(options.toolInput);
+          if (isSensitiveToolPath(targetPath)) {
+            this.securityLogger('[ToolPermissionService] Allow-all mode, sensitive path escalated to prompt', { toolName, targetPath });
+          } else {
+            this.securityLogger('[ToolPermissionService] Allow-all mode, auto-approving file tool', { toolName });
+            return { decision: 'allow', scope: 'once' };
+          }
         }
       }
     }
