@@ -199,6 +199,7 @@ import {
 } from './extensions/panels';
 import { setStorageBackend, getExtensionEditorAPI } from '@nimbalyst/runtime';
 import { store, editorDirtyAtom, makeEditorKey } from '@nimbalyst/runtime/store';
+import { getDefaultPriority, getInitialStatus } from '@nimbalyst/runtime/plugins/TrackerPlugin/models';
 import { extensionPanelAIContextAtom } from './store/atoms/extensionPanels';
 import { setDiffTreeGroupByDirectoryAtom, setAgentFileScopeModeAtom, hydrateFileGutterCollapsedAtom } from './store/atoms/projectState';
 import {
@@ -2002,8 +2003,11 @@ export default function App() {
           id,
           type: item.type,
           title: item.title || `New ${item.type}`,
-          status: item.status || 'to-do',
-          priority: item.priority || 'medium',
+          // Resolve both from the item's own type. A hardcoded default is out
+          // of enum for a type that doesn't declare it, and an out-of-enum
+          // value matches no filter and no board column.
+          status: item.status || getInitialStatus(item.type) || 'to-do',
+          priority: item.priority || getDefaultPriority(item.type),
           description: item.description,
           owner: item.owner,
           tags: item.tags,

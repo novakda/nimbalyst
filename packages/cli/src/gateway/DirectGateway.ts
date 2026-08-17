@@ -469,6 +469,20 @@ export class DirectGateway implements TrackerGateway {
   }
 
   /**
+   * The value a type declares for a field, or the caller's fallback. A
+   * hardcoded default is out of enum for any type that doesn't declare it, and
+   * an out-of-enum value matches no filter and no board column -- the item goes
+   * invisible rather than merely mis-defaulted.
+   */
+  private fieldDefault(workspace: string, type: string, field: string, fallback: string): string {
+    const model = this.loadTypeDefs(workspace).get(type);
+    const def = Array.isArray(model?.fields)
+      ? model.fields.find((f: any) => f?.name === field)?.default
+      : undefined;
+    return typeof def === 'string' && def ? def : fallback;
+  }
+
+  /**
    * Refuse a write that promotes work past review offline, mirroring the app's
    * MCP guard. Checks the workflow-status role field however the type names it,
    * plus the conventional `status`, so approval can't slip through `--fields`.
@@ -500,8 +514,9 @@ export class DirectGateway implements TrackerGateway {
 
     const data: Record<string, any> = {
       [titleField]: input.title,
-      [statusField]: input.status || 'to-do',
-      [priorityField]: input.priority || 'medium',
+      [statusField]: input.status || this.fieldDefault(workspace, input.type, statusField, 'to-do'),
+      [priorityField]:
+        input.priority || this.fieldDefault(workspace, input.type, priorityField, 'medium'),
       created: createdDate,
       authorIdentity: identity,
       createdByAgent: true,
