@@ -31,12 +31,18 @@ export async function createCollectionItem(params: {
   const statusField = model?.fields.find((f) => f.name === statusFieldName);
   const status = (statusField?.default as string) || 'to-do';
 
+  // Priority resolves from the schema for the same reason status does: a
+  // hardcoded 'medium' is out of enum for a type that doesn't declare it.
+  const priorityFieldName = model?.roles?.priority ?? 'priority';
+  const priorityField = model?.fields.find((f) => f.name === priorityFieldName);
+  const priority = (priorityField?.default as string) || 'medium';
+
   const result = await window.electronAPI.documentService.createTrackerItem({
     id,
     type,
     title,
     status,
-    priority: 'medium',
+    priority,
     workspace: workspacePath,
     sharing: model?.sharing ?? 'personal',
     draftByDefault: model?.draftByDefault ?? false,

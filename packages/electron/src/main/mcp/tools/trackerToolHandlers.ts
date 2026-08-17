@@ -1505,10 +1505,18 @@ export async function handleTrackerCreate(
     const defaultStatus =
       (typeof statusFieldDef?.default === 'string' && statusFieldDef.default) || 'to-do';
 
+    // Same reasoning for priority. A hardcoded 'medium' is out of enum for any
+    // custom type that doesn't declare it, and an out-of-enum priority matches
+    // no filter and no board column -- the item goes invisible rather than
+    // merely mis-defaulted, and skips the triage inbox permanently.
+    const priorityFieldDef = model?.fields?.find((f) => f.name === priorityField);
+    const defaultPriority =
+      (typeof priorityFieldDef?.default === 'string' && priorityFieldDef.default) || 'medium';
+
     const data: Record<string, any> = {
       [titleField]: args.title,
       [statusField]: args.status || defaultStatus,
-      [priorityField]: args.priority || "medium",
+      [priorityField]: args.priority || defaultPriority,
       created: new Date().toISOString().split("T")[0],
       authorIdentity,
       // Imports pass createdByAgent: false (the item is mirrored from upstream,

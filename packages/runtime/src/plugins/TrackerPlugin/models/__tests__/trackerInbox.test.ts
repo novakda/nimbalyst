@@ -128,6 +128,13 @@ describe('trackerInbox', () => {
       expect(getDefaultPriority(type)).toBe('p3');
       expect(isUntriaged(record('at-default', type, { severity: 'p3' }), signals)).toBe(true);
       expect(isUntriaged(record('escalated', type, { severity: 'p1' }), signals)).toBe(false);
+      // Legacy rows stamped 'medium' before the write paths became type-aware.
+      // 'medium' is not in this type's options, so it cannot be a human
+      // decision -- the UI never offered it. Without healing it here the item
+      // reads as prioritized and skips the inbox permanently, and rewriting
+      // persisted rows plus frontmatter plus synced state is impractical.
+      expect(priorityOptionsFor(type)).not.toContain('medium');
+      expect(isUntriaged(record('legacy-stamped', type, { severity: 'medium' }), signals)).toBe(true);
     } finally {
       globalRegistry.unregister(type);
     }

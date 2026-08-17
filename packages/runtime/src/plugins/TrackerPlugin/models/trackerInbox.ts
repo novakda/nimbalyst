@@ -116,7 +116,16 @@ export function triageSignals(record: TrackerRecord, signals: InboxSignals): Tri
   return {
     assigned: Boolean(signals.getAssignee(record)),
     // The default is a stamp, not a decision -- see STAMPED_DEFAULT_PRIORITY.
-    prioritized: Boolean(priority) && priority !== getDefaultPriority(record.primaryType),
+    // The third clause heals legacy rows: a value the type never offered cannot
+    // be a human decision, because the UI never presented it. Items stamped
+    // 'medium' before the write paths became type-aware would otherwise read as
+    // prioritized and skip the inbox forever, and rewriting persisted rows plus
+    // file frontmatter plus synced state is impractical -- so resolve it here.
+    prioritized:
+      Boolean(priority) &&
+      priority !== getDefaultPriority(record.primaryType) &&
+      (priorityOptionsFor(record.primaryType).length === 0 ||
+        priorityOptionsFor(record.primaryType).includes(priority)),
     inCollection: isInCollection(record),
     // A type with no usable workflow lifecycle cannot tell "untouched" from
     // "moved", so the other signals decide.
